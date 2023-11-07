@@ -9,12 +9,11 @@ const orderController = require('../controller/orderController')
 
 orderRouter.route('/api/order')
   .get((req, res) => orderController.getOrders(req, res))
-  .post((req, res) => orderController.createOrder(req, res));
-
-orderRouter.route('/api/order/:id')
-  .get((req, res) => orderController.getOrder(req, res))
+  .post((req, res) => orderController.createOrder(req, res))
   .put((req, res) => orderController.updateOrder(req, res))
-  .delete((req, res) => orderController.deleteOrderById(req, res));
+  .delete((req, res) => orderController.deleteOrderById(req, res))
+  .get((req, res) => orderController.getOrder(req, res));
+
 
 
 

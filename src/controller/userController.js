@@ -10,6 +10,7 @@ module.exports = {
         });
     },
     deleteUser: async (req, res) => {
+        if (req.user.permission === 10) {
         try {
             const result = await user.deleteOne({ cpf: req.body.cpf });
             if (result.deletedCount > 0) {
@@ -20,6 +21,10 @@ module.exports = {
         } catch (err) {
             res.status(500).json({ message: "Não foi possível remover o usuario" });
         }
+    } else {
+        res.status(403).json({ message: 'Você não tem permissão para realizar esta ação' });
+
+    }
     },
     getUser: async (req, res) => {
         try {
@@ -34,6 +39,7 @@ module.exports = {
         }
     },
     updateUser: async (req, res) => {
+        if (req.user.permission === 10) {
         try {
             const result = await user.updateOne({ cpf: req.body.cpf }, req.body);
             if (result.modifiedCount > 0) {
@@ -44,29 +50,38 @@ module.exports = {
         } catch (err) {
             res.status(500).json({ message: "Não foi possível atualizar os dados" })
         }
+    } else {
+        res.status(403).json({ message: 'Você não tem permissão para realizar esta ação' });
+    }
     },
     createUser: async (req, res) => {
         try {
             const result = await user.create(req.body);
-            res.status(201).json({ message: `The user ${result._doc.name} was created with sucess` });
+            res.status(201).json({ message: `O ${result._doc.name} Foi criado com sucesso` });
         } catch (err) {
-            res.status(500).json({ message: `Unable to create user ${req.body.name}` });
+            res.status(500).json({ message: `Não foi possível criar o usuário ${req.body.name}` });
         }
     },
     login: async (req, res) => {
-        const result = await user.findOne({ email: req.body.email, password: req.body.password })
+        const result = await user.findOne({ email: req.body.email, password: req.body.password });
         if (!result) {
             res.status(401).json({ message: "Credenciais inválidas" });
         } else {
-            
             const secret = process.env.SECRET;
-            jwtService.sign(req.body, secret, (err, token) => {
+            const payload = {
+                id: result._id,
+                email: result.email,
+                permission: result.permission 
+            };
+    
+            jwtService.sign(payload, secret, (err, token) => {
                 if (err) {
-                    res.status(401).json({ message: "Não foi possível autenticar" })
+                    res.status(401).json({ message: "Não foi possível autenticar" });
                 } else {
-                    res.status(201).json({"Access-Token": token})
+                    res.status(201).json({"Access-Token": token});
                 }
             });
         }
     }
+    
 };

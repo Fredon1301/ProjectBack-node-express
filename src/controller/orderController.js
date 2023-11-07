@@ -1,8 +1,13 @@
 const Order = require('../models/Order');
 const User = require('../models/User');
-const Product = require('../models/Product');
+const Book = require('../models/Book');
 const jwtService = require('jsonwebtoken');
+const OrderCounter = require('../models/OrderCounter');
 
+async function generateOrderCode() {
+  const orderCounter = await OrderCounter.findOneAndUpdate({}, { $inc: { count: 1 } }, { new: true, upsert: true });
+  return orderCounter.count;
+}
 module.exports = {
   getOrders: (req, res) => {
     Order.find({}).select(["-__v", "-_id"]).then((result) => {
@@ -23,10 +28,10 @@ module.exports = {
       res.status(500).json({ message: "Não foi possível remover o pedido" });
     }
   },
-  getOrders: async (req, res) => {
+  getOrder: async (req, res) => {
     try {
-      const cpf = req.params.cpf;
-      const codProduct = req.params.codProduct;
+      const cpf = req.body.cpf;
+      const codBook = req.body.codBook;
 
       const user = await User.findOne({ cpf });
 
@@ -35,14 +40,14 @@ module.exports = {
       }
 
       
-      const product = await Product.findOne({ codProduct });
+      const Book = await Book.findOne({ codBook });
 
-      if (!product) {
+      if (!Book) {
         return res.status(404).json({ message: "Produto não encontrado" });
       }
 
       
-      const order = await Order.findOne({ userId: user._id, productId: product._id });
+      const order = await Order.findOne({ userId: user._id, bookId: book._id });
 
       if (!order) {
         return res.status(404).json({ message: "Pedido não encontrado" });
@@ -65,47 +70,49 @@ module.exports = {
       res.status(500).json({ message: "Não foi possível atualizar os dados" });
     }
   },
+  
   createOrder: async (req, res) => {
     try {
-      const { cpf, codProduct } = req.body;
-  
-     
-      const user = await User.findOne({ cpf });
-  
-      if (!user) {
-        return res.status(404).json({ message: "Usuário não encontrado" });
-      }
-  
-      
-      const product = await Product.findOne({ codProduct });
-  
-      if (!product) {
-        return res.status(404).json({ message: "Produto não encontrado" });
-      }
-  
-      
-      const newOrder = await Order.create({
-        userId: user._id,
-        userAttributes: {
-          name: user.name,
-          cpf: user.cpf,
-        
-        },
-        productId: product._id,
-        productAttributes: {
-          name: product.name,
-          productType: product.productType,
-          currentPrice: product.currentPrice,
-          expirationDate: product.expirationDate,
-          codProduct: product.codProduct,
+        const { cpf, codBook } = req.body;
 
-        },
+        const user = await User.findOne({ cpf });
 
-      });
-  
-      res.status(201).json({ message: `O pedido foi criado com sucesso`, order: newOrder });
+        if (!user) {
+            return res.status(404).json({ message: "Usuário não encontrado" });
+        }
+
+        const book = await Book.findOne({ codBook });
+
+        if (!book || book.quantity < 1) {
+            return res.status(404).json({ message: "Compra não efetuada" });
+        }
+
+
+        const codOrder = await generateOrderCode();
+
+        const newOrder = await Order.create({
+            codOrder: codOrder,
+            userId: user._id,
+            userAttributes: {
+                name: user.name,
+                cpf: user.cpf,
+                email: user.email,
+            },
+            bookId: book._id,
+            bookAttributes: {
+                name: book.name,
+                descBook: book.descBook,
+                bookType: book.bookType,
+                currentPrice: book.currentPrice,
+                expirationDate: book.expirationDate,
+                codBook: book.codBook,
+                quantity: 1
+            },
+        });
+
+        res.status(201).json({ message: "O pedido foi criado com sucesso", order: newOrder });
     } catch (err) {
-      res.status(500).json({ message: `Não foi possível criar o pedido: ${err.message}` });
+        res.status(500).json({ message: `Não foi possível criar o pedido: ${err.message}` });
     }
   },
 };

@@ -22,12 +22,13 @@ module.exports = async (req, res, next) => {
     res.status(401).json({ message: 'Você não tem autorização para acessar esse recurso' });
     return;
   }
-  
+
   token = token.split(' ')[1];
   const secret = process.env.SECRET;
-  
+
   try {
-    const user = await jwtService.verify(token, secret);
+    const user = jwtService.verify(token, secret);
+    req.user = user; 
     return next();
   } catch (err) {
     res.status(403).json({ message: 'Usuário não autorizado' });
